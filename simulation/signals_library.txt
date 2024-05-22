@@ -1,6 +1,9 @@
 fe_htz.psi_2[0]@ alpha-axis flux estimate@ Wb@ $\psi_{\alpha 2}$@ flux
 fe_htz.psi_2[1]@ beta-axis flux estimate@ Wb@ $\psi_{\beta 2}$@ flux
 
+fe_htz.psi_1[0]@ alpha-axis stator flux estimate@ Wb@ $\psi_{\alpha 1}$@ flux
+fe_htz.psi_1[1]@ beta-axis stator flux estimate@ Wb@ $\psi_{\beta 1}$@ flux
+
 fe_htz.u_offset[0]@ alpha-axis offset voltage@ V@ $u_{\alpha , \rm offset}$@ voltage
 fe_htz.u_offset[1]@ beta-axis offset voltage@ V@ $u_{\beta , \rm offset}$@ voltage
 
@@ -41,3 +44,5 @@ fe_htz.psi_2_max[0]@ maximum alpha-axis flux estimation @Wb @ $\psi_{\alpha 2 , 
 fe_htz.psi_2_max[1]@ maximum beta-axis flux estimation @Wb @ $\psi_{\beta 2 , \rm max}$ @ flux
 fe_htz.psi_2_min[0]@ minimum alpha-axis flux estimation @Wb @ $\psi_{\alpha 2 , \rm min}$ @ flux
 fe_htz.psi_2_min[1]@ minimum beta-axis flux estimation @Wb @ $\psi_{\beta 2 , \rm min}$ @ flux
+CTRL.psi_com[0]@ alpha-axis flux estimation compensation@Wb @ $\psi_{\alpha , \rm com}$ @ flux
+CTRL.psi_com[1]@ beta-axis flux estimation compensation@Wb @ $\psi_{\beta , \rm com}$ @ flux

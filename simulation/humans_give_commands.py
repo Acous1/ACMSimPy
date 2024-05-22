@@ -3,15 +3,16 @@ def humans_give_commands(CTRL, ACM, t):
     """ Console @ CL_TS """
 
     if t < 0.2:
-        CTRL.cmd_rpm = 100
+        CTRL.cmd_rpm = 150
         ACM.TLoad = 0
     elif t < 0.5:
-        CTRL.cmd_rpm = 100
-        ACM.TLoad = 0.3
+        CTRL.cmd_rpm = 150
+        ACM.TLoad = 0
         CTRL.cmd_idq[1] = 3
+        # CTRL.index_voltage_model_flux_estimation = 4
     elif t < 0.7:
-        CTRL.cmd_rpm = 100
-        ACM.TLoad = 0.6
+        CTRL.cmd_rpm = 150
+        ACM.TLoad = 0
         CTRL.cmd_idq[1] = 3
     # if CTRL.timebase < 2:
     #     CTRL.cmd_idq[1] = 8* np.sin(2*np.pi* 2 *CTRL.timebase)

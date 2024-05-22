@@ -176,7 +176,7 @@ custom.generate_function()
 d = {
     # Timing
     'CL_TS': 1e-4,
-    'TIME_SLICE': 3,
+    'TIME_SLICE': 1.5,
     'NUMBER_OF_SLICES': 1,
     'VL_EXE_PER_CL_EXE': 5,
     'MACHINE_SIMULATIONs_PER_SAMPLING_PERIOD': 1,
@@ -196,11 +196,11 @@ d = {
     'disp.IntLimit': 0.0,
     #Control index
     'CTRL.index_voltage_model_flux_estimation': 4,
-    'CTRL.index_separate_speed_estimation': 2,
+    'CTRL.index_separate_speed_estimation': 0,
     'CTRL.bool_apply_decoupling_voltages_to_current_regulation':  True,
     'CTRL.bool_apply_speed_closed_loop_control': True,
     'CTRL.bool_zero_id_control': True,
-    'CTRL.bool_reverse_rotation': True,
+    'CTRL.bool_reverse_rotation': False,
     'CTRL.bool_overwrite_speed_commands': True, #False才运行
     'CTRL.bool_apply_sweeping_frequency_excitation': False,
     'CTRL.use_encoder_angle_no_matter_what': False
@@ -209,17 +209,26 @@ d = {
 
 # 小电感电机
 # 舞肌电机
-d['init_npp'] = 26
-d['init_IN'] = 17 
-d['init_R'] = 0.12
-d['init_Ld'] = 0.00046
-d['init_Lq'] = 0.00056
-d['init_KE'] = 0.019
-d['init_KA'] = 0.019
+# d['init_npp'] = 26
+# d['init_IN'] = 17 
+# d['init_R'] = 0.12
+# d['init_Ld'] = 0.00046
+# d['init_Lq'] = 0.00056
+# d['init_KE'] = 0.019
+# d['init_KA'] = 0.019
+# d['init_Rreq'] = 0.0
+# d['init_Js'] = 0.000364
+# d['DC_BUS_VOLTAGE'] = 48
+d['init_npp'] = 5
+d['init_IN'] = 16.8
+d['init_R'] = 0.04
+d['init_Ld'] = 0.00019
+d['init_Lq'] = 0.00019
+d['init_KE'] = 0.017
+d['init_KA'] = 0.017
 d['init_Rreq'] = 0.0
-d['init_Js'] = 0.000364
+d['init_Js'] = 0.000159
 d['DC_BUS_VOLTAGE'] = 48
-
 # 北京时代超群
 # d['init_npp'] = 4
 # d['init_IN'] = 3
@@ -359,7 +368,7 @@ for root, dirs, files in os.walk(image_folder):
 # thetaerror_avg_Saturation_sudden = np.zeros(5, dtype=np.float64)
 # thetaerror_avg_saturation = np.zeros(5, dtype=np.float64)
 # ELL_param = [0.05, 0.075, 0.1, 0.125, 0.15]
-ELL_param = [0.019]
+ELL_param = [0.017]
 # ell_param = 0.15
 # FE_param = [0.5, 0.75, 1 , 1.25, 1.5]
 # FE_param = 1
