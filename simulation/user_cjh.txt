@@ -10,4 +10,10 @@ flux estimate@ fe_htz.psi_1[0]@fe_htz.psi_1[1]
 $\psi_{\rm com}$ @ CTRL.psi_com[0]@ CTRL.psi_com[1]
 
 $\ell$ @ CTRL.ell
-active_power_real @ CTRL.active_power_real
+speed @CTRL.marino_xOmg @ ACM.omega_r_mech/(2*np.pi)*60
+theta @CTRL.marino_xRho@ACM.theta_d
+psi @CTRL.marino_psi_Dmu@CTRL.marino_psi_Qmu@CTRL.e_psi_Qmu
+TL@CTRL.marino_xTL 
+Tem@CTRL.CLARKE_TRANS_TORQUE_GAIN * CTRL.npp * (CTRL.marino_psi_Dmu * CTRL.idq[1] - CTRL.marino_psi_Qmu * CTRL.idq[0])@- CTRL.marino_gama_inv * CTRL.Js * CTRL.cmd_psi * CTRL.e_psi_Qmu
+psi_2@fe_htz.psi_2[0] * - CTRL.sinT + fe_htz.psi_2[1] * CTRL.cosT
+e_psi_Qmu@CTRL.e_psi_Qmu

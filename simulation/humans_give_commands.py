@@ -2,17 +2,17 @@ import numpy as np
 def humans_give_commands(CTRL, ACM, t):
     """ Console @ CL_TS """
 
-    if t < 0.2:
+    if t < 0.7:
+        CTRL.cmd_rpm = 100
+        ACM.TLoad = 0.5
+    elif t < 0.8:
         CTRL.cmd_rpm = 150
-        ACM.TLoad = 0
-    elif t < 0.5:
-        CTRL.cmd_rpm = 150
-        ACM.TLoad = 0
-        CTRL.cmd_idq[1] = 3
+        ACM.TLoad = 0.5
+        CTRL.cmd_idq[1] = 1
         # CTRL.index_voltage_model_flux_estimation = 4
-    elif t < 0.7:
+    elif t < 0.9:
         CTRL.cmd_rpm = 150
-        ACM.TLoad = 0
+        ACM.TLoad = 1
         CTRL.cmd_idq[1] = 3
     # if CTRL.timebase < 2:
     #     CTRL.cmd_idq[1] = 8* np.sin(2*np.pi* 2 *CTRL.timebase)

@@ -23,7 +23,7 @@ class The_Motor_Controller:
         self.Lq   = kwargs.get('init_Lq', 0.00056)
         self.KE   = kwargs.get('init_KE', 0.019)
         self.Rreq = kwargs.get('init_Rreq', 0)
-        self.Js   = kwargs.get('init_Js', 0.000364)
+        self.Js   = kwargs.get('init_Js', 0.000159)
         self.DC_BUS_VOLTAGE = kwargs.get('DC_BUS_VOLTAGE', 48)
         self.Js_inv = 1 / self.Js
         self.Lq_inv = 1 / self.Lq
@@ -36,7 +36,7 @@ class The_Motor_Controller:
         print('\tCTRL.velocity_loop_ceiling =', self.velocity_loop_ceiling)
         # feedback / input
         self.theta_d = kwargs.get('theta_d', 0.0)
-        self. thetaerror = kwargs.get('thetaerror', 0.0)
+        self.thetaerror = kwargs.get('thetaerror', 0.0)
         self.omega_r_elec = kwargs.get('omega_r_elec', 0.0)
         self.omega_syn = kwargs.get('omega_syn', 0.0)
         self.omega_slip = kwargs.get('omega_slip', 0.0)
@@ -58,9 +58,9 @@ class The_Motor_Controller:
         self.cmd_uab = kwargs.get('cmd_uab', np.zeros(2, dtype=np.float64))
         self.cmd_rpm = kwargs.get('cmd_rpm', 0.0)
         if self.Rreq >0:
-            self.cmd_psi = 0.019 # [Wb]
+            self.cmd_psi = 0.017 # [Wb]
         else:
-            self.cmd_psi = kwargs.get('init_KE', 0.019)# [Wb]
+            self.cmd_psi = kwargs.get('init_KE', 0.017)# [Wb]
         self.index_voltage_model_flux_estimation = kwargs.get('CTRL.index_voltage_model_flux_estimation', 1)
         self.index_separate_speed_estimation = kwargs.get('CTRL.index_separate_speed_estimation', 0)
         self.use_disturbance_feedforward_rejection = kwargs.get('use_disturbance_feedforward_rejection', 0)
@@ -69,6 +69,7 @@ class The_Motor_Controller:
         self.bool_zero_id_control = kwargs.get('CTRL.bool_zero_id_control', True)
         self.bool_reverse_rotation = kwargs.get('CTRL.bool_reverse_rotation', True)
         self.flag_reverse_rotation = kwargs.get('flag_reverse_rotation', True)
+        self.index_controller = kwargs.get('index_controller', 0)
         self.counter_rotation = kwargs.get('counter_rotation', 10)
         # sweep frequency
         self.bool_apply_sweeping_frequency_excitation = kwargs.get('CTRL.bool_apply_sweeping_frequency_excitation', False)
@@ -182,10 +183,10 @@ class The_Motor_Controller:
         self.psi_com = kwargs.get('psi_com', np.zeros(2, dtype=np.float64))
         # marino 2005 observer
         self.CL_TS_INV = 1 / self.CL_TS
-        self.marino_gama_inv = kwargs.get('marino_gama_inv', 17142.86)
+        self.marino_gama_inv = kwargs.get('marino_gama_inv', 170000)
         self.e_psi_Qmu = kwargs.get('e_psi_Qmu', 0.0)
         self.e_psi_Dmu = kwargs.get('e_psi_Dmu', 0.0)
-        self.marino_lamda_inv = kwargs.get('marino_lambda_inv', 1000)
+        self.marino_lamda_inv = kwargs.get('marino_lambda_inv', 15000)
         self.marino_xRho = kwargs.get('marino_xRho', 0.0)
         self.marino_xTL = kwargs.get('marino_xTL', 0.0)
         self.marino_xOmg = kwargs.get('marino_xOmg', 0.0)
@@ -198,8 +199,34 @@ class The_Motor_Controller:
         self.marino_deriv_xTL = kwargs.get('marino_deriv_xTL', 0.0)
         self.marino_deriv_xOmg = kwargs.get('marino_deriv_xOmg', 0.0)
         self.CLARKE_TRANS_TORQUE_GAIN = kwargs.get('CLARKE_TRANS_TORQUE_GAIN', 1.5)
+        self.CLARKE_TRANS_TORQUE_GAIN_INVERSE = 1 / self.CLARKE_TRANS_TORQUE_GAIN
         self.marino_psi_Dmu = kwargs.get('marino_psi_Dmu ', 0.0)
         self.marino_psi_Qmu = kwargs.get('marino_psi_Qmu ', 0.0)
+        self.marino_cosT = kwargs.get('marino_cosT', 1.0)
+        self.marino_sinT = kwargs.get('marino_sinT', 0.0)
+        self.marino_deriv_iQ_cmd = kwargs.get('marino_deriv_iQ_cmd', 0.0)
+        self.marino_deriv_iD_cmd = kwargs.get('marino_deriv_iD_cmd', 0.0)
+        self.cmd_deriv_psi = kwargs.get('cmd_deriv_psi_Dmu', 0.0)
+        self.marino_k_omega = kwargs.get('marino_k_omega', 0.0)
+        self.cmd_dderiv_omega_r_elec = kwargs.get('cmd_dderiv_omega_r_elec', 0.0)
+        self.cmd_deriv_omega_r_elec = kwargs.get('cmd_deriv_omega_r_elec', 0.0)
+        self.marino_e_iDs = kwargs.get('marino_e_iDs', 0.0)
+        self.marino_e_iQs = kwargs.get('marino_e_iQs', 0.0)
+        self.marino_torque_cmd = kwargs.get('marino_torque_cmd', 0.0)
+        self.marino_torque_fb = kwargs.get('marino_torque_fb', 0.0)
+        self.marino_zD = kwargs.get('marino_zD', 0.0)
+        self.marino_zQ = kwargs.get('marino_zQ', 0.0)
+        self.marino_Gamma_D = kwargs.get('marino_Gamma_D', 0.0)
+        self.marino_Gamma_Q = kwargs.get('marino_Gamma_Q', 0.0)
+        self.marino_kz = kwargs.get('marino_kz', 0.0)
+        self.cmd_omega_r_elec = kwargs.get('cmd_omega_r_elec', 0.0)
+        self.Ld_inv = 1 / self.Ld
+        self.npp_inv = 1 / self.npp
+        self.marino_kappa = kwargs.get('marino_kappa', 1e4*24)
+        self.cmd_psi_inv = 1 / self.cmd_psi
+        self.marino_e_psi_Dmu = kwargs.get('marino_e_psi_Dmu', 0.0)
+        self.marino_e_psi_Qmu = kwargs.get('marino_e_psi_Qmu', 0.0)
+        self.cmd_iab = kwargs.get('cmd_iab', np.zeros(2, dtype=np.float64))
 
 class The_AC_Machine:
     def __init__(self, CTRL, MACHINE_SIMULATIONs_PER_SAMPLING_PERIOD=1, Lq_param=1.0):
@@ -395,6 +422,10 @@ class Variables_FluxEstimator_Holtz03:
         self.u_offset_correction_factor = 1000
         self.u_offset_filered = np.zeros(2, dtype=np.float64)
         self.psi_com = np.zeros(2, dtype=np.float64)
+        # speed observer 4 VM
+        self.emf_stator = np.zeros(2, dtype=np.float64)
+        self.field_speed_est = 0
+        self.field_speed_est_lpf = 0
 ############################################# OBSERVERS SECTION
 def DYNAMICS_SpeedObserver(x, CTRL, SO_param=1.0):
     fx = np.zeros(NS_GLOBAL)
@@ -443,7 +474,7 @@ def nso_one_parameter_tuning(CTRL):
 
 # 低通滤波器
 def _lpf(x, y, tau_inv,CTRL):
-    return y + tau_inv * (x - y) * CTRL.CL_TS
+    return y + tau_inv * CTRL.CL_TS * (x - y)
 # nature speed oberver dynamics
 def NSO_Dynamics(x, CTRL, param = 1.0):
     fx = np.zeros(NS_GLOBAL)
@@ -559,7 +590,7 @@ def cal_psi_error(CTRL, fe_htz, ACM):
             CTRL.psi_max = 0
             CTRL.bool_counter = False
 '''flux estimators'''
-#5. no saturation time based
+#4. no saturation time based
 def DYNAMICS_No_Saturation_FluxEstimator(x, CTRL, Rs_param=1.0):
     fx = np.zeros(NS_GLOBAL)
     fx[0] = CTRL.uab[0] - CTRL.R * Rs_param * CTRL.iab[0] - x[2] - x[4]
@@ -731,12 +762,9 @@ def NATRUE_SPEED_OBSERVER(CTRL, Rs_param):
     # CTRL.omega_r_elec = ACM.omega_r_elec 
     CTRL.omega_r_elec = CTRL.nsoaf_xOmg 
     
-def rhs_func_marino2005(CTRL, x):
-    xRho = x[0]
-    xTL = x[1]
-    xOmg = x[2]
-    CTRL.cosT = np.cos(xRho)
-    CTRL.sinT = np.sin(xRho)
+def rhs_func_marino2005(increment_n, CTRL, xRho, xTL, xOmg):
+    CTRL.marino_cosT = np.cos(xRho)
+    CTRL.marino_sinT = np.sin(xRho)
 
     CTRL.idq[0] = CTRL.iab[0] * CTRL.cosT + CTRL.iab[1] * CTRL.sinT
     CTRL.idq[1] = CTRL.iab[0] *-CTRL.sinT + CTRL.iab[1] * CTRL.cosT
@@ -748,57 +776,66 @@ def rhs_func_marino2005(CTRL, x):
     fx[1] = - CTRL.marino_gama_inv * CTRL.Js * CTRL.cmd_psi * CTRL.e_psi_Qmu
     # xOmg
     xTem  = CTRL.CLARKE_TRANS_TORQUE_GAIN * CTRL.npp * (CTRL.marino_psi_Dmu * CTRL.idq[1] - CTRL.marino_psi_Qmu * CTRL.idq[0])
+    # fx[2] = CTRL.npp * CTRL.Js_inv * (xTem - xTL) + 2 * CTRL.marino_lamda_inv * CTRL.cmd_psi * CTRL.e_psi_Qmu
     fx[2] = CTRL.npp * CTRL.Js_inv * (xTem - xTL) + 2 * CTRL.marino_lamda_inv * CTRL.cmd_psi * CTRL.e_psi_Qmu
 
-    CTRL.increment_n[0] = ( fx[0] ) * CTRL.CL_TS
-    CTRL.increment_n[1] = ( fx[1] ) * CTRL.CL_TS
-    CTRL.increment_n[2] = ( fx[2] ) * CTRL.CL_TS
+
+    increment_n[0] = ( fx[0] ) * CTRL.CL_TS
+    increment_n[1] = ( fx[1] ) * CTRL.CL_TS
+    increment_n[2] = ( fx[2] ) * CTRL.CL_TS
     return fx
 
 def marino05_dedicated_rk4_solver(CTRL):
-    x = np.zeros(NS_GLOBAL)
+    x_temp = np.zeros(3)
+    increment_1 = np.zeros(3)
+    increment_2 = np.zeros(3)
+    increment_3 = np.zeros(3)
+    increment_4 = np.zeros(3)
+    # xtemp[0] = CTRL.marino_xRho
+    # xtemp[1] = CTRL.marino_xTL
+    # xtemp[2] = CTRL.marino_xOmg
 
-    x[0] = CTRL.marino_xRho
-    x[1] = CTRL.marino_xTL
-    x[2] = CTRL.marino_xOmg
+    rhs_func_marino2005(increment_1, CTRL, CTRL.marino_xRho, CTRL.marino_xTL, CTRL.marino_xOmg)
+    x_temp[0]  = CTRL.marino_xRho   + increment_1[0] * 0.5
+    x_temp[1]  = CTRL.marino_xTL    + increment_1[1] * 0.5
+    x_temp[2]  = CTRL.marino_xOmg   + increment_1[2] * 0.5
 
-    rhs_func_marino2005(CTRL, x)
-    CTRL.x_temp[0]  = CTRL.marino_xRho   + CTRL.increment_1[0] * 0.5
-    CTRL.x_temp[1]  = CTRL.marino_xTL    + CTRL.increment_1[1] * 0.5
-    CTRL.x_temp[2]  = CTRL.marino_xOmg   + CTRL.increment_1[3] * 0.5
+    rhs_func_marino2005(increment_2, CTRL, x_temp[0], x_temp[1], x_temp[2])
+    x_temp[0]  = CTRL.marino_xRho   + increment_2[0] * 0.5
+    x_temp[1]  = CTRL.marino_xTL    + increment_2[1] * 0.5
+    x_temp[2]  = CTRL.marino_xOmg   + increment_2[2] * 0.5
 
-    rhs_func_marino2005(CTRL, CTRL.x_temp)
-    CTRL.x_temp[0]  = CTRL.marino_xRho   + CTRL.increment_2[0] * 0.5
-    CTRL.x_temp[1]  = CTRL.marino_xTL    + CTRL.increment_2[1] * 0.5
-    CTRL.x_temp[2]  = CTRL.marino_xOmg   + CTRL.increment_2[3] * 0.5
+    rhs_func_marino2005(increment_3, CTRL, x_temp[0], x_temp[1], x_temp[2])
+    x_temp[0]  = CTRL.marino_xRho   + increment_3[0]
+    x_temp[1]  = CTRL.marino_xTL    + increment_3[1]
+    x_temp[2]  = CTRL.marino_xOmg   + increment_3[2]
 
-    rhs_func_marino2005(CTRL, CTRL.x_temp)
-    CTRL.x_temp[0]  = CTRL.marino_xRho   + CTRL.increment_3[0]
-    CTRL.x_temp[1]  = CTRL.marino_xTL    + CTRL.increment_3[1]
-    CTRL.x_temp[2]  = CTRL.marino_xOmg   + CTRL.increment_3[3]
+    rhs_func_marino2005(increment_4, CTRL, x_temp[0], x_temp[1], x_temp[2])
+    CTRL.marino_xRho        += (increment_1[0] + 2*(increment_2[0] + increment_3[0]) + increment_4[0])*0.166666666666667
+    CTRL.marino_xTL         += (increment_1[1] + 2*(increment_2[1] + increment_3[1]) + increment_4[1])*0.166666666666667
+    CTRL.marino_xOmg        += (increment_1[2] + 2*(increment_2[2] + increment_3[2]) + increment_4[2])*0.166666666666667
 
-    rhs_func_marino2005(CTRL, CTRL.x_temp)
-    CTRL.marino_xRho        += (CTRL.increment_1[0] + 2*(CTRL.increment_2[0] + CTRL.increment_3[0]) + CTRL.increment_4[0])*0.166666666666667
-    CTRL.marino_xTL         += (CTRL.increment_1[1] + 2*(CTRL.increment_2[1] + CTRL.increment_3[1]) + CTRL.increment_4[1])*0.166666666666667
-    CTRL.marino_xOmg        += (CTRL.increment_1[2] + 2*(CTRL.increment_2[2] + CTRL.increment_3[2]) + CTRL.increment_4[2])*0.166666666666667
-
-    CTRL.omega_r_elec = CTRL.marino_xOmg 
-    CTRL.marino_deriv_xTL    = (CTRL.increment_1[1] + 2*(CTRL.increment_2[1] + CTRL.increment_3[1]) + CTRL.increment_4[1])*0.166666666666667 * CTRL.CL_TS_INV
-    CTRL.marino_deriv_xOmg   = (CTRL.increment_1[2] + 2*(CTRL.increment_2[2] + CTRL.increment_3[2]) + CTRL.increment_4[2])*0.166666666666667 * CTRL.CL_TS_INV
+    # CTRL.omega_syn = CTRL.marino_xOmg 
+    CTRL.marino_deriv_xTL    = (increment_1[1] + 2*(increment_2[1] + increment_3[1]) + increment_4[1])*0.166666666666667 * CTRL.CL_TS_INV
+    CTRL.marino_deriv_xOmg   = (increment_1[2] + 2*(increment_2[2] + increment_3[2]) + increment_4[2])*0.166666666666667 * CTRL.CL_TS_INV
 
     if CTRL.marino_xRho > np.pi:
         CTRL.marino_xRho -= 2*np.pi
     elif CTRL.marino_xRho < -np.pi:
-        CTRL.The_Motor_Controllermarino_xRho += 2*np.pi
+        CTRL.marino_xRho += 2*np.pi
     
 def MARINO_2005_observer(CTRL, Rs_param, fe_htz):
     CTRL.marino_psi_Dmu = fe_htz.psi_2[0] *   CTRL.cosT + fe_htz.psi_2[1] * CTRL.sinT
     CTRL.marino_psi_Qmu = fe_htz.psi_2[0] * - CTRL.sinT + fe_htz.psi_2[1] * CTRL.cosT
     CTRL.e_psi_Dmu = CTRL.marino_psi_Dmu - CTRL.cmd_psi
-    CTRL.e_psi_Qmu = CTRL.marino_psi_Qmu - 0
+    CTRL.e_psi_Qmu = CTRL.marino_psi_Qmu - 0.0
     marino05_dedicated_rk4_solver(CTRL)
-    
 
+def Speed_Estimation_4_VM_FluxEstimation(fe_htz, CTRL, Rs_param):
+    fe_htz.emf_stator[0] = CTRL.uab[0] - CTRL.R * Rs_param * CTRL.iab[0]
+    fe_htz.emf_stator[1] = CTRL.uab[1] - CTRL.R * Rs_param * CTRL.iab[1]
+    fe_htz.field_speed_est = - (fe_htz.psi_1[0]*fe_htz.emf_stator[1] + fe_htz.psi_1[1]*fe_htz.emf_stator[0]) / (fe_htz.psi_1[0] * fe_htz.psi_1[0] + fe_htz.psi_1[1]*fe_htz.psi_1[1])
+    fe_htz.field_speed_est_lpf = _lpf(fe_htz.field_speed_est, fe_htz.field_speed_est_lpf, 15, CTRL)
 
 
 
@@ -1059,6 +1096,73 @@ def SFOC_Dynamic(CTRL, reg_speed, reg_id, reg_iq):
 
     CTRL.cmd_udq[1] = reg_iq.Out
 
+def sat_kappa(x, CTRL):
+    if(x > CTRL.marino_kappa):
+        return CTRL.marino_kappa
+    elif(x < -CTRL.marino_kappa):
+        return -CTRL.marino_kappa
+    else:
+        return x
+
+def deriv_sat_kappa(x, CTRL):
+    if(x > CTRL.marino_kappa):
+        return 0
+    elif(x < -CTRL.marino_kappa):
+        return 0
+    else:
+        return 1
+
+def controller_marino2005(CTRL, fe_htz, ACM):
+    # CTRL.theta_d = CTRL.marino_xRho
+    CTRL.theta_d = ACM.theta_d
+    CTRL.omega_r_elec = ACM.omega_r_elec
+    CTRL.TLoad        = CTRL.marino_xTL
+    # αβ to DQ
+    CTRL.cosT = np.cos(CTRL.theta_d)
+    CTRL.sinT = np.sin(CTRL.theta_d)
+    CTRL.idq[0] = CTRL.iab[0] *   CTRL.cosT + CTRL.iab[1] * CTRL.sinT
+    CTRL.idq[1] = CTRL.iab[0] * - CTRL.sinT + CTRL.iab[1] * CTRL.cosT
+
+    # 当磁链幅值给定平稳时，这项就是零。
+    CTRL.marino_deriv_iD_cmd = 1.0 * CTRL.Ld_inv * CTRL.cmd_deriv_psi
+    # 重新写！
+    # REAL mu_temp     = CTRL.motor->npp_inv*CTRL.motor->Js * CLARKE_TRANS_TORQUE_GAIN_INVERSE*CTRL.motor->npp_inv;
+    # REAL mu_temp_inv = CTRL.motor->npp*CTRL.motor->Js_inv * CLARKE_TRANS_TORQUE_GAIN*CTRL.motor->npp;
+    # 第一项很有用，第二项无用。
+    CTRL.marino_deriv_iQ_cmd =   CTRL.npp_inv * CTRL.Js * CTRL.CLARKE_TRANS_TORQUE_GAIN_INVERSE * CTRL.npp_inv * (\
+        1.0*(- CTRL.marino_k_omega * deriv_sat_kappa(CTRL.omega_r_elec - CTRL.cmd_omega_r_elec, CTRL) * (CTRL.marino_deriv_xOmg - CTRL.cmd_deriv_omega_r_elec) + CTRL.Js_inv * CTRL.npp * CTRL.marino_deriv_xTL + CTRL.cmd_dderiv_omega_r_elec ) * CTRL.cmd_psi_inv\
+      - 1.0*(- CTRL.marino_k_omega *       sat_kappa(CTRL.omega_r_elec - CTRL.cmd_omega_r_elec, CTRL) + CTRL.Js_inv * CTRL.npp * CTRL.TLoad + CTRL.cmd_deriv_omega_r_elec) * (CTRL.cmd_deriv_psi * CTRL.cmd_psi_inv * CTRL.cmd_psi_inv)
+        )
+    
+    # current error quantities
+    CTRL.cmd_idq[0] = CTRL.cmd_psi * CTRL.Ld_inv
+    CTRL.cmd_idq[1] = (CTRL.npp_inv * CTRL.Js * ( 1 * CTRL.cmd_deriv_omega_r_elec - CTRL.marino_k_omega * sat_kappa(CTRL.omega_r_elec - CTRL.cmd_omega_r_elec, CTRL) ) + CTRL.TLoad ) * (CTRL.CLARKE_TRANS_TORQUE_GAIN_INVERSE * CTRL.npp_inv * CTRL.cmd_psi_inv)
+    CTRL.marino_e_iDs = CTRL.idq[0] - CTRL.cmd_idq[0]
+    CTRL.marino_e_iQs = CTRL.idq[1] - CTRL.cmd_idq[1]
+    CTRL.marino_torque_cmd = CTRL.CLARKE_TRANS_TORQUE_GAIN * CTRL.npp * CTRL.cmd_idq[1] * CTRL.cmd_psi
+    CTRL.marino_torque_fb  = CTRL.CLARKE_TRANS_TORQUE_GAIN * CTRL.npp * (CTRL.idq[1]     * CTRL.marino_psi_Dmu - CTRL.idq[0] * CTRL.marino_psi_Qmu)
+    # marino.torque__fb = CLARKE_TRANS_TORQUE_GAIN * CTRL.motor->npp * (CTRL.I->idq[1]     * marino.psi_Dmu)
+
+    # linear combination of error
+    CTRL.marino_zD = CTRL.marino_e_iDs + CTRL.Lq_inv * CTRL.marino_e_psi_Dmu
+    CTRL.marino_zQ = CTRL.marino_e_iQs + CTRL.Lq_inv * CTRL.marino_e_psi_Qmu
+    # known signals to feedforward (to cancel)
+    CTRL.marino_Gamma_D = CTRL.Lq_inv * (- CTRL.R * CTRL.idq[0] + CTRL.omega_syn * CTRL.marino_e_psi_Qmu) + CTRL.omega_syn * CTRL.idq[1] - CTRL.marino_deriv_iD_cmd
+    CTRL.marino_Gamma_Q = CTRL.Lq_inv * (- CTRL.R * CTRL.idq[1] - CTRL.omega_r_elec  * CTRL.cmd_psi - CTRL.omega_syn * CTRL.marino_e_psi_Dmu) - CTRL.omega_syn * CTRL.idq[0] - CTRL.marino_deriv_iQ_cmd
+    # voltage commands
+    CTRL.cmd_udq[0] = CTRL.Lq * (- CTRL.marino_kz * CTRL.marino_zD - CTRL.marino_Gamma_D)
+    CTRL.cmd_udq[1] = CTRL.Lq * (- CTRL.marino_kz * CTRL.marino_zQ - CTRL.marino_Gamma_Q)
+    CTRL.cmd_uab[0] = CTRL.cmd_udq[0] * CTRL.cosT - CTRL.cmd_udq[1] * CTRL.sinT
+    CTRL.cmd_uab[1] = CTRL.cmd_udq[0] * CTRL.sinT + CTRL.cmd_udq[1] * CTRL.cosT
+
+    # use the second 3 phase inverter
+    # CTRL.cmd_uab[0+2] = CTRL.cmd_uab[0]
+    # CTRL.cmd_uab[1+2] = CTRL.cmd_uab[1]
+
+    # for view in scope
+    CTRL.cmd_iab[0] = CTRL.cmd_idq[0] * CTRL.cosT - CTRL.cmd_idq[1] * CTRL.sinT
+    CTRL.cmd_iab[1] = CTRL.cmd_idq[0] * CTRL.sinT + CTRL.cmd_idq[1] * CTRL.cosT
+
 ############################################# DSP SECTION
 def DSP(ACM, CTRL, reg_speed, reg_id, reg_iq, fe_htz, Rs_param=1.0,ELL_param = 0.019):
     CTRL.timebase += CTRL.CL_TS
@@ -1092,13 +1196,14 @@ def DSP(ACM, CTRL, reg_speed, reg_id, reg_iq, fe_htz, Rs_param=1.0,ELL_param = 0
         CTRL.omega_r_elec = ACM.omega_r_elec
     elif CTRL.index_separate_speed_estimation == 1:
         SEPARATE_SPEED_OBSERVER(CTRL, Rs_param)
-
         """ Nature Speed Observer """
     elif CTRL.index_separate_speed_estimation == 2:
         NATRUE_SPEED_OBSERVER(CTRL, Rs_param)
     elif CTRL.index_separate_speed_estimation == 3:
         MARINO_2005_observer(CTRL, Rs_param, fe_htz)
         CTRL.omega_r_elec = ACM.omega_r_elec
+    elif CTRL.index_separate_speed_estimation == 4:
+        Speed_Estimation_4_VM_FluxEstimation(fe_htz, CTRL, Rs_param)
     """ (Optional) Do Park transformation again using the position estimate from the speed observer """
     pass
 
@@ -1107,11 +1212,14 @@ def DSP(ACM, CTRL, reg_speed, reg_id, reg_iq, fe_htz, Rs_param=1.0,ELL_param = 0
     CTRL.iab_prev[1] = CTRL.iab_curr[1]
 
     """ Speed and Current Controller (two cascaded closed loops) """
-    FOC(CTRL, reg_speed, reg_id, reg_iq)
+    if CTRL.index_controller == 0:
+        FOC(CTRL, reg_speed, reg_id, reg_iq)
+    elif CTRL.index_controller == 1:
+        controller_marino2005(CTRL, fe_htz, ACM)
     reverse_rotation(CTRL, ACM)
     # [$] Inverse Park transformation: get voltage commands in alpha-beta frame as SVPWM input
-    CTRL.cmd_uab[0] = CTRL.cmd_udq[0] * CTRL.cosT + CTRL.cmd_udq[1] *-CTRL.sinT
-    CTRL.cmd_uab[1] = CTRL.cmd_udq[0] * CTRL.sinT + CTRL.cmd_udq[1] * CTRL.cosT
+    CTRL.cmd_uab[0] = CTRL.cmd_udq[0] * CTRL.cosT + CTRL.cmd_udq[1] *- CTRL.sinT
+    CTRL.cmd_uab[1] = CTRL.cmd_udq[0] * CTRL.sinT + CTRL.cmd_udq[1] *  CTRL.cosT
 
 ############################################# Inverter and PWM
 def SVGEN_DQ(v, one_over_Vdc):

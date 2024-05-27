@@ -196,17 +196,21 @@ d = {
     'disp.IntLimit': 0.0,
     #Control index
     'CTRL.index_voltage_model_flux_estimation': 4,
-    'CTRL.index_separate_speed_estimation': 0,
+    'CTRL.index_separate_speed_estimation': 4,
     'CTRL.bool_apply_decoupling_voltages_to_current_regulation':  True,
     'CTRL.bool_apply_speed_closed_loop_control': True,
     'CTRL.bool_zero_id_control': True,
     'CTRL.bool_reverse_rotation': False,
     'CTRL.bool_overwrite_speed_commands': True, #False才运行
     'CTRL.bool_apply_sweeping_frequency_excitation': False,
-    'CTRL.use_encoder_angle_no_matter_what': True
-
+    'CTRL.use_encoder_angle_no_matter_what': False,
+    'index_controller': 0
 }
-
+# According to CTRL.index_separate_speed_estimation, chose your speed observer
+#0. encoder for speed
+#1. SEPARATE_SPEED_OBSERVER
+#2. NATRUE_SPEED_OBSERVER
+#3. marino_2005
 
 # 小电感电机
 # # 舞肌电机
@@ -341,21 +345,21 @@ def InitialAllGlobalClass():
 # plt.plot(watch_data_as_dict['fe_htz.psi_2[0]'], watch_data_as_dict['fe_htz.psi_2[1]'])
 # plt.show()
 
-image_folder = 'images'
-for file_name in os.listdir(image_folder):
-    if file_name.endswith('.png'):
-        file_path = os.path.join(image_folder, file_name)
-        os.remove(file_path)
-        print(f'remove {file_path}')
+# image_folder = 'images'
+# for file_name in os.listdir(image_folder):
+#     if file_name.endswith('.png'):
+#         file_path = os.path.join(image_folder, file_name)
+#         os.remove(file_path)
+#         print(f'remove {file_path}')
 
-for root, dirs, files in os.walk(image_folder):
-    for dir_name in dirs:
-        dir_path = os.path.join(root, dir_name)
-        for file_name in os.listdir(dir_path):
-            if file_name.endswith('.png'):
-                file_path = os.path.join(dir_path, file_name)
-                os.remove(file_path)
-                print(f'remove {file_path}')
+# for root, dirs, files in os.walk(image_folder):
+#     for dir_name in dirs:
+#         dir_path = os.path.join(root, dir_name)
+#         for file_name in os.listdir(dir_path):
+#             if file_name.endswith('.png'):
+#                 file_path = os.path.join(dir_path, file_name)
+#                 os.remove(file_path)
+#                 print(f'remove {file_path}')
 
 # e_p2p = np.zeros(5, dtype=np.float64)
 # e_p2p_Saturation_sudden = np.zeros(5, dtype=np.float64)
