@@ -69,7 +69,7 @@ class The_Motor_Controller:
         self.bool_zero_id_control = kwargs.get('CTRL.bool_zero_id_control', True)
         self.bool_reverse_rotation = kwargs.get('CTRL.bool_reverse_rotation', True)
         self.flag_reverse_rotation = kwargs.get('flag_reverse_rotation', True)
-        self.index_controller = kwargs.get('index_controller', 0)
+        self.index_controller = kwargs.get('CTRL.index_controller', 0)
         self.counter_rotation = kwargs.get('counter_rotation', 10)
         # sweep frequency
         self.bool_apply_sweeping_frequency_excitation = kwargs.get('CTRL.bool_apply_sweeping_frequency_excitation', False)
@@ -149,10 +149,10 @@ class The_Motor_Controller:
         self.K2_for_min_ell = kwargs.get('K2_for_min_ell', -0.005)
         # boldea 2008
         self.rotor_flux_error = kwargs.get('rotor_flux_error', np.zeros(NS_GLOBAL, dtype=np.float64))
-        self.OFFSET_VOLTAGE_ALPHA = kwargs.get('OFFSET_VOLTAGE_ALPHA', 0.0)
+        self.OFFSET_VOLTAGE_ALPHA = kwargs.get('OFFSET_VOLTAGE_ALPHA', 0.1)
         self.OFFSET_VOLTAGE_BETA = kwargs.get('OFFSET_VOLTAGE_BETA', 0.0)
-        self.VM_PROPOSED_PI_CORRECTION_GAIN_P = kwargs.get('VM_PROPOSED_PI_CORRECTION_GAIN_P', 0.1)
-        self.VM_PROPOSED_PI_CORRECTION_GAIN_I = kwargs.get('VM_PROPOSED_PI_CORRECTION_GAIN_I', 0.01)
+        self.VM_PROPOSED_PI_CORRECTION_GAIN_P = kwargs.get('VM_PROPOSED_PI_CORRECTION_GAIN_P', 100)
+        self.VM_PROPOSED_PI_CORRECTION_GAIN_I = kwargs.get('VM_PROPOSED_PI_CORRECTION_GAIN_I', 100)
         self.correction_integral_term = kwargs.get('correction_integral_term', np.zeros(NS_GLOBAL, dtype=np.float64))
         self.emf_stator = kwargs.get('emf_stator', np.zeros(NS_GLOBAL, dtype=np.float64))
         self.cmd_psi_mu = kwargs.get('cmd_psi_mu', np.zeros(NS_GLOBAL, dtype=np.float64))
@@ -181,7 +181,7 @@ class The_Motor_Controller:
         self.idq_c = kwargs.get('idq_c', np.zeros(2, dtype=np.float64))
         self.NO_Saturation_PI_CORRECTION_GAIN_I = kwargs.get('NO_Saturation_PI_CORRECTION_GAIN_I', 100)
         self.psi_com = kwargs.get('psi_com', np.zeros(2, dtype=np.float64))
-        # marino 2005 observer
+        # marino 2005 observer and controller
         self.CL_TS_INV = 1 / self.CL_TS
         self.marino_gama_inv = kwargs.get('marino_gama_inv', 170000)
         self.e_psi_Qmu = kwargs.get('e_psi_Qmu', 0.0)
@@ -227,6 +227,8 @@ class The_Motor_Controller:
         self.marino_e_psi_Dmu = kwargs.get('marino_e_psi_Dmu', 0.0)
         self.marino_e_psi_Qmu = kwargs.get('marino_e_psi_Qmu', 0.0)
         self.cmd_iab = kwargs.get('cmd_iab', np.zeros(2, dtype=np.float64))
+        self.gamma_res_transient = kwargs.get('gamma_res_transient', 0.0)
+        self.gamma_res_transient_shape = kwargs.get('gamma_res_transient', 2000)
 
 class The_AC_Machine:
     def __init__(self, CTRL, MACHINE_SIMULATIONs_PER_SAMPLING_PERIOD=1, Lq_param=1.0):
@@ -273,6 +275,7 @@ class The_AC_Machine:
         self.sinT = 0.0
         self.MACHINE_SIMULATIONs_PER_SAMPLING_PERIOD = MACHINE_SIMULATIONs_PER_SAMPLING_PERIOD
         self.bool_apply_load_model = False
+        self.omg_ctrl_err = 0.0
 
 class The_PI_Regulator:
     def __init__(self, KP_CODE, KI_CODE, OUTPUT_LIMIT):
@@ -424,8 +427,16 @@ class Variables_FluxEstimator_Holtz03:
         self.psi_com = np.zeros(2, dtype=np.float64)
         # speed observer 4 VM
         self.emf_stator = np.zeros(2, dtype=np.float64)
-        self.field_speed_est = 0
-        self.field_speed_est_lpf = 0
+        self.field_speed_est = 0.0
+        self.field_speed_est_lpf = 0.0
+        self.xTem = 0.0
+        self.voltage_drop_mod = 0.0
+        self.current_mod = 0.0
+        self.count_rs = 0
+        self.GAIN_RS = 5
+        self.rs_cal = 0.0
+        self.the_u = 0.0
+        self.the_y = 0.0
 ############################################# OBSERVERS SECTION
 def DYNAMICS_SpeedObserver(x, CTRL, SO_param=1.0):
     fx = np.zeros(NS_GLOBAL)
@@ -598,6 +609,7 @@ def DYNAMICS_No_Saturation_FluxEstimator(x, CTRL, Rs_param=1.0):
     fx[4] = CTRL.NO_Saturation_PI_CORRECTION_GAIN_I * CTRL.psi_com[0]
     fx[5] = CTRL.NO_Saturation_PI_CORRECTION_GAIN_I * CTRL.psi_com[1]
     return fx
+
 def no_saturation_to_cal_KE_and_uoffset(fe_htz, CTRL, ACM, Rs_param):
     RK4_ObserverSolver_CJH_Style(DYNAMICS_No_Saturation_FluxEstimator, fe_htz.xFlux, CTRL.CL_TS, CTRL, Rs_param)
     fe_htz.psi_1[0] = fe_htz.xFlux[0] - CTRL.psi_com[0] * 0.0015
@@ -715,12 +727,57 @@ def no_saturation_to_cal_KE_and_uoffset(fe_htz, CTRL, ACM, Rs_param):
         CTRL.theta_d = ACM.theta_d
         CTRL.cosT = np.cos(CTRL.theta_d)
         CTRL.sinT = np.sin(CTRL.theta_d)
+#5 Syn IFO(Lascu and Andreescus 2006)
+
+def DYNAMICS_SynIFO_flux_estimator(x, CTRL, Rs_param):
+    fx = np.zeros(NS_GLOBAL)
+    
+    CTRL.rotor_flux_error[0] = ( CTRL.cmd_psi_mu[0] - (x[0]-CTRL.Lq * CTRL.iab[0]) )
+    CTRL.rotor_flux_error[1] = ( CTRL.cmd_psi_mu[1] - (x[1]-CTRL.Lq * CTRL.iab[1]) )
+
+    CTRL.emf_stator[0] = CTRL.uab[0] - CTRL.R * Rs_param * CTRL.iab[0] + CTRL.OFFSET_VOLTAGE_ALPHA + CTRL.VM_PROPOSED_PI_CORRECTION_GAIN_P * CTRL.rotor_flux_error[0] + x[2]
+    CTRL.emf_stator[1] = CTRL.uab[1] - CTRL.R * Rs_param * CTRL.iab[1] + CTRL.OFFSET_VOLTAGE_BETA  + CTRL.VM_PROPOSED_PI_CORRECTION_GAIN_P * CTRL.rotor_flux_error[1] + x[3]
+    fx[0] = CTRL.emf_stator[0]
+    fx[1] = CTRL.emf_stator[1]
+    fx[2] = CTRL.VM_PROPOSED_PI_CORRECTION_GAIN_I * CTRL.rotor_flux_error[0]
+    fx[3] = CTRL.VM_PROPOSED_PI_CORRECTION_GAIN_I * CTRL.rotor_flux_error[1]
+    return fx
+
+def SynIFO_flux_estimator(fe_htz, CTRL, ACM, Rs_param):
+    CTRL.KA = CTRL.KE + (CTRL.Ld - CTRL.Lq) * (CTRL.iab[0] * CTRL.cosT + CTRL.iab[1] * CTRL.sinT)
+    CTRL.cmd_psi_mu[0] = CTRL.KA  * CTRL.cosT
+    CTRL.cmd_psi_mu[1] = CTRL.KA  * CTRL.sinT
+    RK4_ObserverSolver_CJH_Style(DYNAMICS_SynIFO_flux_estimator, fe_htz.xFlux, CTRL.CL_TS, CTRL, Rs_param)
+    #// Unpack x
+    fe_htz.psi_1[0]                         = fe_htz.xFlux[0]
+    fe_htz.psi_1[1]                         = fe_htz.xFlux[1]
+    CTRL.correction_integral_term[0]        = fe_htz.xFlux[2]
+    CTRL.correction_integral_term[1]        = fe_htz.xFlux[3]
+    fe_htz.u_offset[0] = CTRL.correction_integral_term[0]
+    fe_htz.u_offset[1] = CTRL.correction_integral_term[1]   
+    #// rotor flux updates
+
+    fe_htz.psi_2[0] = fe_htz.psi_1[0] - CTRL.Lq * CTRL.iab[0]
+    fe_htz.psi_2[1] = fe_htz.psi_1[1] - CTRL.Lq * CTRL.iab[1]
+
+    fe_htz.theta_d = np.arctan2(fe_htz.psi_2[1], fe_htz.psi_2[0]) 
+
+    while ACM.theta_d> np.pi: ACM.theta_d -= 2*np.pi
+    while ACM.theta_d<-np.pi: ACM.theta_d += 2*np.pi
+    CTRL.theta_d = fe_htz.theta_d
+    CTRL.cosT = np.cos(CTRL.theta_d)
+    CTRL.sinT = np.sin(CTRL.theta_d)
+    if CTRL.use_encoder_angle_no_matter_what == True:
+        CTRL.theta_d = ACM.theta_d
+        CTRL.cosT = np.cos(CTRL.theta_d)
+        CTRL.sinT = np.sin(CTRL.theta_d)
 '''speed observers'''
 # According to CTRL.index_separate_speed_estimation, chose your speed observer
 #0. encoder for speed
 #1. SEPARATE_SPEED_OBSERVER
 #2. NATRUE_SPEED_OBSERVER
 #3. marino_2005
+#4. NATRUE_SPEED_OBSERVER with Speed Estimation and Rs identification
 def SEPARATE_SPEED_OBSERVER(CTRL, Rs_param):
     RK4_ObserverSolver_CJH_Style(DYNAMICS_SpeedObserver, CTRL.xSpeed, CTRL.CL_TS, CTRL, Rs_param)
     while CTRL.xSpeed[0]> np.pi: CTRL.xSpeed[0] -= 2*np.pi
@@ -761,7 +818,7 @@ def NATRUE_SPEED_OBSERVER(CTRL, Rs_param):
     """ Speed Observer Outputs """
     # CTRL.omega_r_elec = ACM.omega_r_elec 
     CTRL.omega_r_elec = CTRL.nsoaf_xOmg 
-    
+# marino 2005
 def rhs_func_marino2005(increment_n, CTRL, xRho, xTL, xOmg):
     CTRL.marino_cosT = np.cos(xRho)
     CTRL.marino_sinT = np.sin(xRho)
@@ -825,19 +882,35 @@ def marino05_dedicated_rk4_solver(CTRL):
         CTRL.marino_xRho += 2*np.pi
     
 def MARINO_2005_observer(CTRL, Rs_param, fe_htz):
+
     CTRL.marino_psi_Dmu = fe_htz.psi_2[0] *   CTRL.cosT + fe_htz.psi_2[1] * CTRL.sinT
     CTRL.marino_psi_Qmu = fe_htz.psi_2[0] * - CTRL.sinT + fe_htz.psi_2[1] * CTRL.cosT
     CTRL.e_psi_Dmu = CTRL.marino_psi_Dmu - CTRL.cmd_psi
     CTRL.e_psi_Qmu = CTRL.marino_psi_Qmu - 0.0
     marino05_dedicated_rk4_solver(CTRL)
-
+# AlternativeSolution--Speed Estimation
 def Speed_Estimation_4_VM_FluxEstimation(fe_htz, CTRL, Rs_param):
     fe_htz.emf_stator[0] = CTRL.uab[0] - CTRL.R * Rs_param * CTRL.iab[0]
     fe_htz.emf_stator[1] = CTRL.uab[1] - CTRL.R * Rs_param * CTRL.iab[1]
-    fe_htz.field_speed_est = - (fe_htz.psi_1[0]*fe_htz.emf_stator[1] + fe_htz.psi_1[1]*fe_htz.emf_stator[0]) / (fe_htz.psi_1[0] * fe_htz.psi_1[0] + fe_htz.psi_1[1]*fe_htz.psi_1[1])
-    fe_htz.field_speed_est_lpf = _lpf(fe_htz.field_speed_est, fe_htz.field_speed_est_lpf, 15, CTRL)
+    fe_htz.field_speed_est = - (fe_htz.psi_1[0] * - fe_htz.emf_stator[1] + fe_htz.psi_1[1] * fe_htz.emf_stator[0]) / (fe_htz.psi_1[0] * fe_htz.psi_1[0] + fe_htz.psi_1[1]*fe_htz.psi_1[1])
+    fe_htz.field_speed_est_lpf = _lpf(fe_htz.field_speed_est, fe_htz.field_speed_est_lpf, 5, CTRL)
+# AlternativeSolution--Rs identification
+def Rs_Identification(CTRL, fe_htz, ACM):
+    CTRL.omg_ctrl_err = CTRL.omega_r_elec - CTRL.cmd_rpm / 60 * CTRL.npp * 2 * np.pi
+    CTRL.gamma_res_transient = np.exp(-CTRL.omg_ctrl_err * CTRL.omg_ctrl_err * CTRL.gamma_res_transient_shape)
+    fe_htz.xTem = CTRL.npp * (CTRL.iab[1] * fe_htz.psi_2[0] - CTRL.iab[0] * fe_htz.psi_2[1])
+    fe_htz.voltage_drop_mod = CTRL.iab[0] * CTRL.uab[0] + CTRL.iab[1] * CTRL.uab[1] - CTRL.npp_inv * fe_htz.field_speed_est_lpf * fe_htz.xTem
+    fe_htz.current_mod = CTRL.iab[0] * CTRL.iab[0] + CTRL.iab[1] * CTRL.iab[1]
 
-
+    if fe_htz.count_rs < 0.2 * 4000 *1: # ++akt.count_rs < P1*TS_INVERSE*1 TS_INVERSE (IM_TS_INVERSE*DOWN_FREQ_EXE_INVERSE) // 4000
+        fe_htz.count_rs += 1
+        fe_htz.the_u += 2.5e-4 * CTRL.gamma_res_transient * fe_htz.current_mod
+        fe_htz.the_y += 2.5e-4 * CTRL.gamma_res_transient * fe_htz.voltage_drop_mod
+    else:
+        fe_htz.rs_cal += fe_htz.GAIN_RS * fe_htz.the_u /(1 + fe_htz.the_u * fe_htz.the_u * fe_htz.GAIN_RS) * (fe_htz.the_y - fe_htz.rs_cal * fe_htz.the_u)
+        fe_htz.count_rs = 0
+        fe_htz.the_u = 0
+        fe_htz.the_y = 0
 
 ############################################# MACHINE SIMULATION SECTION
 def DYNAMICS_MACHINE(t, x, ACM, CLARKE_TRANS_TORQUE_GAIN=1.5):
@@ -1111,7 +1184,7 @@ def deriv_sat_kappa(x, CTRL):
         return 0
     else:
         return 1
-
+# 暂时无法使用的控制器需要重新设计
 def controller_marino2005(CTRL, fe_htz, ACM):
     # CTRL.theta_d = CTRL.marino_xRho
     CTRL.theta_d = ACM.theta_d
@@ -1180,6 +1253,8 @@ def DSP(ACM, CTRL, reg_speed, reg_id, reg_iq, fe_htz, Rs_param=1.0,ELL_param = 0
     # cancel saturation and estimate K_E and u_offset from \psi_max and \psi_min
     elif CTRL.index_voltage_model_flux_estimation == 4:
         no_saturation_to_cal_KE_and_uoffset(fe_htz, CTRL, ACM, Rs_param)
+    elif CTRL.index_voltage_model_flux_estimation == 5:
+        SynIFO_flux_estimator(fe_htz, CTRL, ACM, Rs_param)
     """ Park Transformation Essentials """
     # Park transformation
     CTRL.idq[0] = CTRL.iab[0] * CTRL.cosT + CTRL.iab[1] * CTRL.sinT
@@ -1203,7 +1278,9 @@ def DSP(ACM, CTRL, reg_speed, reg_id, reg_iq, fe_htz, Rs_param=1.0,ELL_param = 0
         MARINO_2005_observer(CTRL, Rs_param, fe_htz)
         CTRL.omega_r_elec = ACM.omega_r_elec
     elif CTRL.index_separate_speed_estimation == 4:
+        NATRUE_SPEED_OBSERVER(CTRL, Rs_param)
         Speed_Estimation_4_VM_FluxEstimation(fe_htz, CTRL, Rs_param)
+        Rs_Identification(CTRL, fe_htz, ACM)
     """ (Optional) Do Park transformation again using the position estimate from the speed observer """
     pass
 
@@ -1396,7 +1473,7 @@ def gate_signal_generator(ii, v, CPU_TICK_PER_SAMPLING_PERIOD, DEAD_TIME_AS_COUN
             else:
                 pass # False
 
-# 让电机正反转
+# 让电机正反转, 用于测试
 def reverse_rotation(CTRL, ACM):
     if CTRL.bool_reverse_rotation == True:
             if ACM.theta_d > 2.5 and CTRL.flag_reverse_rotation == True:

@@ -176,7 +176,7 @@ custom.generate_function()
 d = {
     # Timing
     'CL_TS': 1e-4,
-    'TIME_SLICE': 1.5,
+    'TIME_SLICE': 3,
     'NUMBER_OF_SLICES': 1,
     'VL_EXE_PER_CL_EXE': 5,
     'MACHINE_SIMULATIONs_PER_SAMPLING_PERIOD': 1,
@@ -195,16 +195,16 @@ d = {
     'disp.OutLimit': 0.0,
     'disp.IntLimit': 0.0,
     #Control index
-    'CTRL.index_voltage_model_flux_estimation': 4,
-    'CTRL.index_separate_speed_estimation': 4,
-    'CTRL.bool_apply_decoupling_voltages_to_current_regulation':  True,
+    'CTRL.index_voltage_model_flux_estimation': 5,
+    'CTRL.index_separate_speed_estimation': 0,
+    'CTRL.bool_apply_decoupling_voltages_to_current_regulation':  False,
     'CTRL.bool_apply_speed_closed_loop_control': True,
     'CTRL.bool_zero_id_control': True,
     'CTRL.bool_reverse_rotation': False,
     'CTRL.bool_overwrite_speed_commands': True, #False才运行
     'CTRL.bool_apply_sweeping_frequency_excitation': False,
     'CTRL.use_encoder_angle_no_matter_what': False,
-    'index_controller': 0
+    'CTRL.index_controller': 0
 }
 # According to CTRL.index_separate_speed_estimation, chose your speed observer
 #0. encoder for speed

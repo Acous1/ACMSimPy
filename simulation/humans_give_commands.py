@@ -2,48 +2,18 @@ import numpy as np
 def humans_give_commands(CTRL, ACM, t):
     """ Console @ CL_TS """
 
-    if t < 0.7:
+    if t < 0.3:
         CTRL.cmd_rpm = 100
-        ACM.TLoad = 0.5
+        ACM.TLoad = 0.3
     elif t < 0.8:
         CTRL.cmd_rpm = 150
-        ACM.TLoad = 0.5
+        ACM.TLoad = 0.7
         CTRL.cmd_idq[1] = 1
         # CTRL.index_voltage_model_flux_estimation = 4
-    elif t < 0.9:
+    elif t < 1.5:
         CTRL.cmd_rpm = 150
         ACM.TLoad = 1
         CTRL.cmd_idq[1] = 3
-    # if CTRL.timebase < 2:
-    #     CTRL.cmd_idq[1] = 8* np.sin(2*np.pi* 2 *CTRL.timebase)
-    # elif t < 4:
-    #     CTRL.cmd_rpm = 300
-    # elif t < 4.1:
-    #     CTRL.cmd_rpm = 300
-    # elif t < 4.2:
-    #     CTRL.cmd_rpm = 300
-    # elif t < 4:
-    #     CTRL.cmd_rpm = 600
-    # elif t < 4.25:
-    #     CTRL.cmd_rpm = 300
-    # elif t < 5:
-    #     ACM.TLoad = 1
-    # elif t < 5.1:
-    #     CTRL.cmd_rpm = 300
-    # elif t < 6:
-    #     ACM.TLoad = 1
-    # elif t < 7.5:
-    #     CTRL.cmd_rpm = 300
-    # elif t < 2.40:
-    #     CTRL.apply_pulse_4_evaluating_position_estimator_accuracy = False
-    # elif t < 4:
-    #     # CTRL.cmd_rpm = -200
-    #     CTRL.apply_pulse_4_evaluating_position_estimator_accuracy = True
-    # elif t < 4.1:
-    #     # CTRL.cmd_rpm = -200
-    #     CTRL.apply_pulse_4_evaluating_position_estimator_accuracy = True
-    # elif t < 4.0:
-    # print(CTRL.cmd_rpm)
 
     if CTRL.bool_overwrite_speed_commands == False:
         if t < 1.0:
