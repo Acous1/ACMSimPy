@@ -154,11 +154,11 @@ custom.generate_function()
 d = {
     # Timing
     'CL_TS': 1e-4,
-    'TIME_SLICE': 1.5,
+    'TIME_SLICE': 35,
     'NUMBER_OF_SLICES': 1,
     'VL_EXE_PER_CL_EXE': 5,
     'MACHINE_SIMULATIONs_PER_SAMPLING_PERIOD': 1,
-    'FOC_delta': 10,  # 25, # 6.5
+    'FOC_delta': 6.5,  # 25, # 6.5
     'FOC_desired_VLBW_HZ': 50,  # 60
     'FOC_CL_KI_factor_when__bool_apply_decoupling_voltages_to_current_regulation__is_False': 10,
     'CL_SERIES_KP': None,
@@ -173,9 +173,9 @@ d = {
     'disp.OutLimit': 0.0,
     'disp.IntLimit': 0.0,
     #Control index
-    'CTRL.index_voltage_model_flux_estimation': 4,
-    'CTRL.index_separate_speed_estimation': 0,
-    'CTRL.bool_apply_decoupling_voltages_to_current_regulation':  True,
+    'CTRL.index_voltage_model_flux_estimation': 3,
+    'CTRL.index_separate_speed_estimation': 2,
+    'CTRL.bool_apply_decoupling_voltages_to_current_regulation':  False,
     'CTRL.bool_apply_speed_closed_loop_control': True,
     'CTRL.bool_zero_id_control': True,
     'CTRL.bool_reverse_rotation': False,
@@ -289,7 +289,7 @@ def InitialAllGlobalClass():
     return  AllClass
 
 
-ELL_param = [0.019]
+ELL_param = [0.017]
 # ell_param = 0.15
 # FE_param = [0.5, 0.75, 1 , 1.25, 1.5]
 # FE_param = 1

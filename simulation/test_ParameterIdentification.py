@@ -43,7 +43,7 @@ class CustomDataFrame:
     def generate_function(self):
         with open(os.path.dirname(__file__) + '/collect_data.py', 'w') as f:
             f.write(
-                f'''import numpy as np\ndef collect_data(watch_data, watch_index, CTRL, ACM, reg_id, reg_iq, reg_speed, fe_htz):\n''')
+                f'''import numpy as np\ndef collect_data(watch_data, watch_index, CTRL, ACM, reg_id, reg_iq, reg_speed, fe_htz, fe_syn, fe_no_sat):\n''')
             index = 0
             for i in range(len(self.plot_details)):
                 for j in range(len(self.plot_details[i]['data_signal'])):
@@ -162,11 +162,11 @@ custom.generate_function()
 d = {
     # Timing
     'CL_TS': 1e-4,
-    'TIME_SLICE': 35,
+    'TIME_SLICE': 12,
     'NUMBER_OF_SLICES': 1,
     'VL_EXE_PER_CL_EXE': 5,
     'MACHINE_SIMULATIONs_PER_SAMPLING_PERIOD': 1,
-    'FOC_delta': 10,  # 25, # 6.5
+    'FOC_delta': 6.5,  # 25, # 6.5
     'FOC_desired_VLBW_HZ': 50,  # 60
     'FOC_CL_KI_factor_when__bool_apply_decoupling_voltages_to_current_regulation__is_False': 10,
     'CL_SERIES_KP': None,
@@ -181,15 +181,15 @@ d = {
     'disp.OutLimit': 0.0,
     'disp.IntLimit': 0.0,
     #Control index
-    'CTRL.index_voltage_model_flux_estimation': 4,
-    'CTRL.index_separate_speed_estimation': 4,
+    'CTRL.index_voltage_model_flux_estimation': 5,
+    'CTRL.index_separate_speed_estimation': 0,
     'CTRL.bool_apply_decoupling_voltages_to_current_regulation':  False,
     'CTRL.bool_apply_speed_closed_loop_control': True,
     'CTRL.bool_zero_id_control': True,
     'CTRL.bool_reverse_rotation': False,
     'CTRL.bool_overwrite_speed_commands': True, #False才运行
     'CTRL.bool_apply_sweeping_frequency_excitation': False,
-    'CTRL.use_encoder_angle_no_matter_what': False,
+    'CTRL.use_encoder_angle_no_matter_what': True,
     'CTRL.index_controller': 0,
     'bool_rs_est_on': False,
     'OFFSET_VOLTAGE_ALPHA':0.0,
@@ -218,13 +218,13 @@ d = {
 # MD 电机
 d['init_npp'] = 5
 d['init_IN'] = 16.8
-d['init_R'] = 0.04
+d['init_R'] = 0.044
 d['init_Ld'] = 0.00019
 d['init_Lq'] = 0.00019
-d['init_KE'] = 0.017
-d['init_KA'] = 0.017
+d['init_KE'] = 0.01717
+d['init_KA'] = 0.01717
 d['init_Rreq'] = 0.0
-d['init_Js'] = 0.0159
+d['init_Js'] = 0.000755
 d['DC_BUS_VOLTAGE'] = 48
 # 北京时代超群
 # d['init_npp'] = 4
@@ -259,8 +259,11 @@ def InitialAllGlobalClass():
     ACM = The_AC_Machine(CTRL, MACHINE_SIMULATIONs_PER_SAMPLING_PERIOD=d['MACHINE_SIMULATIONs_PER_SAMPLING_PERIOD'])
 
 
-
     fe_htz = Variables_FluxEstimator_Holtz03(CTRL.R, d['init_KE'])
+
+    fe_syn = Variables_FluxEstimator_Syn_IFO_lascu2006(CTRL.R, d['init_KE'])
+
+    fe_no_sat = Variables_FluxEstimator_no_saturation_time_based(CTRL.R, d['init_KE'])
 
     reg_dispX = The_PID_Regulator(d['disp.Kp'], d['disp.Ki'], d['disp.Kd'], d['disp.tau'], d['disp.OutLimit'],
                                 d['disp.IntLimit'], d['CL_TS'])
@@ -304,7 +307,7 @@ def InitialAllGlobalClass():
         local_IntLimit = 1.0 * d['VL_LIMIT_OVERLOAD_FACTOR'] * 1.414 * d['init_IN']
         reg_speed = The_PID_Regulator(local_Kp, local_Ki, local_Kd, local_tau, local_OutLimit, local_IntLimit, CTRL.VL_TS)
         print(f'\t{reg_speed.OutLimit=} A')
-    AllClass = (CTRL, ACM, reg_id, reg_iq, reg_speed, reg_dispX, reg_dispY, fe_htz)
+    AllClass = (CTRL, ACM, reg_id, reg_iq, reg_speed, reg_dispX, reg_dispY, fe_htz, fe_syn, fe_no_sat)
     return  AllClass
 
 ELL_param = [0.017]
@@ -313,7 +316,7 @@ P2PIndex = 0
 for lq_param in Lq_param:
     rs_param = 1
     for ell_param in ELL_param:
-        CTRL, ACM, reg_id, reg_iq, reg_speed, reg_dispX, reg_dispY, fe_htz  = InitialAllGlobalClass()
+        CTRL, ACM, reg_id, reg_iq, reg_speed, reg_dispX, reg_dispY, fe_htz, fe_syn, fe_no_sat = InitialAllGlobalClass()
         print(f'generate {lq_param} - {rs_param} - {ell_param}')
         d['Lq_param'] = lq_param
         d['Rs_param'] = rs_param
@@ -331,6 +334,8 @@ for lq_param in Lq_param:
                                                             reg_iq=reg_iq,
                                                             reg_speed=reg_speed,
                                                             fe_htz=fe_htz,
+                                                            fe_syn=fe_syn,
+                                                            fe_no_sat=fe_no_sat,
                                                             Rs_param=d['Rs_param'],
                                                             ELL_param=d['ELL_param'])
             watch_data_as_dict = custom.plot(machine_times, watch_data, Lq_param=lq_param, Rs_param=rs_param, ELL_param = ell_param)

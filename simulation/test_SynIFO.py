@@ -162,7 +162,7 @@ custom.generate_function()
 d = {
     # Timing
     'CL_TS': 1e-4,
-    'TIME_SLICE': 15,
+    'TIME_SLICE': 8,
     'NUMBER_OF_SLICES': 1,
     'VL_EXE_PER_CL_EXE': 5,
     'MACHINE_SIMULATIONs_PER_SAMPLING_PERIOD': 1,
@@ -182,7 +182,7 @@ d = {
     'disp.IntLimit': 0.0,
     #Control index
     'CTRL.index_voltage_model_flux_estimation': 5,
-    'CTRL.index_separate_speed_estimation': 0,
+    'CTRL.index_separate_speed_estimation': 3,
     'CTRL.bool_apply_decoupling_voltages_to_current_regulation':  False,
     'CTRL.bool_apply_speed_closed_loop_control': True,
     'CTRL.bool_zero_id_control': True,
@@ -190,7 +190,14 @@ d = {
     'CTRL.bool_overwrite_speed_commands': True, #False才运行
     'CTRL.bool_apply_sweeping_frequency_excitation': False,
     'CTRL.use_encoder_angle_no_matter_what': False,
-    'CTRL.index_controller': 0
+    'CTRL.index_controller': 0,
+    'bool_rs_est_on': False,
+    'OFFSET_VOLTAGE_ALPHA':0.0,
+    'OFFSET_VOLTAGE_BETA':0.0,
+    'NO_Saturation_PI_CORRECTION_GAIN_P':8,
+    'NO_Saturation_PI_CORRECTION_GAIN_I':7,
+    'VM_PROPOSED_PI_CORRECTION_GAIN_P':50,
+    'VM_PROPOSED_PI_CORRECTION_GAIN_I':20,
 }
 # According to CTRL.index_separate_speed_estimation, chose your speed observer
 #0. encoder for speed
@@ -213,13 +220,13 @@ d = {
 # MD 电机
 d['init_npp'] = 5
 d['init_IN'] = 16.8
-d['init_R'] = 0.04
+d['init_R'] = 0.044
 d['init_Ld'] = 0.00019
 d['init_Lq'] = 0.00019
-d['init_KE'] = 0.017
-d['init_KA'] = 0.017
+d['init_KE'] = 0.01717
+d['init_KA'] = 0.01717
 d['init_Rreq'] = 0.0
-d['init_Js'] = 0.000159
+d['init_Js'] = 0.000755
 d['DC_BUS_VOLTAGE'] = 48
 # 北京时代超群
 # d['init_npp'] = 4
@@ -306,7 +313,7 @@ ELL_param = [0.017]
 Lq_param = [1]
 P2PIndex = 0
 for lq_param in Lq_param:
-    rs_param = 1.2
+    rs_param = 1
     for ell_param in ELL_param:
         CTRL, ACM, reg_id, reg_iq, reg_speed, reg_dispX, reg_dispY, fe_htz  = InitialAllGlobalClass()
         print(f'generate {lq_param} - {rs_param} - {ell_param}')

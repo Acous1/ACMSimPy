@@ -16,31 +16,38 @@ def humans_give_commands(CTRL, ACM, t):
     #     CTRL.cmd_rpm = 600
     #     ACM.TLoad = 0.2
 
-
-    if t < 5:
-        if CTRL.cmd_rpm <= 60:
-            CTRL.cmd_rpm = CTRL.cmd_rpm + 0.01
-    elif t < 7:
-        ACM.TLoad = 2
-    elif t < 10:
-        if CTRL.cmd_rpm >= -60:
-            CTRL.cmd_rpm = CTRL.cmd_rpm - 0.01
-    elif t < 25:
-        if CTRL.cmd_rpm <= 60:
-            CTRL.cmd_rpm = CTRL.cmd_rpm + 0.001
-    elif t < 25.3:
-        if CTRL.cmd_rpm >= -60:
-            CTRL.cmd_rpm = CTRL.cmd_rpm - 0.1
-    elif t < 25.6:
-        if CTRL.cmd_rpm <= 60:
-            CTRL.cmd_rpm = CTRL.cmd_rpm + 0.1       
-    elif t < 25.9:
-        if CTRL.cmd_rpm >= -60:
-            CTRL.cmd_rpm = CTRL.cmd_rpm - 0.1
-    elif t < 28:
-        CTRL.cmd_rpm = 100
-    elif t < 32:
-        CTRL.cmd_rpm = 100 * np.sin(2*np.pi*t) + 100
+    if t < 1:
+        CTRL.cmd_rpm = -50
+        ACM.TLoad = 0.5
+    # elif t < 6:
+    #     if CTRL.cmd_rpm <= 60:
+    #         CTRL.cmd_rpm = CTRL.cmd_rpm + 0.01
+    # elif t < 7:
+    #     ACM.TLoad = 1.2
+    # elif t < 10:
+    #     if CTRL.cmd_rpm >= -60:
+    #         CTRL.cmd_rpm = CTRL.cmd_rpm - 0.01
+    # # elif t < 25:
+    #     if CTRL.cmd_rpm <= 60:
+    #         CTRL.cmd_rpm = CTRL.cmd_rpm + 0.1
+    # elif t < 25.3:
+    #     if CTRL.cmd_rpm >= -60:
+    #         CTRL.cmd_rpm = CTRL.cmd_rpm - 0.1
+    # elif t < 25.6:
+    #     if CTRL.cmd_rpm <= 60:
+    #         CTRL.cmd_rpm = CTRL.cmd_rpm + 0.1       
+    # elif t < 25.9:
+    #     if CTRL.cmd_rpm >= -60:
+    #         CTRL.cmd_rpm = CTRL.cmd_rpm - 0.1
+    # elif t < 28:
+    #     CTRL.cmd_rpm = 100
+    # elif t < 32:
+    #     CTRL.cmd_rpm = 100 * np.sin(2*np.pi*t) + 100
+    
+    # if t < 5:
+    #     CTRL.cmd_rpm = 100
+    # elif t < 16:
+    #     CTRL.cmd_rpm = 100 * np.sin(2*np.pi*t) + 100
     
 
     if CTRL.bool_overwrite_speed_commands == False:

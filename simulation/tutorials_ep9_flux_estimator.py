@@ -12,7 +12,7 @@ NS_GLOBAL = 6
 ############################################# CLASS DEFINITION 
 class The_Motor_Controller:
     def __init__(self, 
-        ELL_param = 0.019,
+        ELL_param = 0.017,
         **kwargs
     ):
         ''' MOTOR '''
@@ -21,7 +21,7 @@ class The_Motor_Controller:
         self.R    = kwargs.get('init_R', 0.12)
         self.Ld   = kwargs.get('init_Ld', 0.00046)
         self.Lq   = kwargs.get('init_Lq', 0.00056)
-        self.KE   = kwargs.get('init_KE', 0.019)
+        self.KE   = kwargs.get('init_KE', 0.017)
         self.Rreq = kwargs.get('init_Rreq', 0)
         self.Js   = kwargs.get('init_Js', 0.000364)
         self.DC_BUS_VOLTAGE = kwargs.get('DC_BUS_VOLTAGE', 48)
@@ -58,9 +58,9 @@ class The_Motor_Controller:
         self.cmd_uab = kwargs.get('cmd_uab', np.zeros(2, dtype=np.float64))
         self.cmd_rpm = kwargs.get('cmd_rpm', 0.0)
         if self.Rreq >0:
-            self.cmd_psi = 0.019 # [Wb]
+            self.cmd_psi = 0.017 # [Wb]
         else:
-            self.cmd_psi = kwargs.get('init_KE', 0.019)# [Wb]
+            self.cmd_psi = kwargs.get('init_KE', 0.017)# [Wb]
         self.index_voltage_model_flux_estimation = kwargs.get('CTRL.index_voltage_model_flux_estimation', 1)
         self.index_separate_speed_estimation = kwargs.get('CTRL.index_separate_speed_estimation', 0)
         self.use_disturbance_feedforward_rejection = kwargs.get('use_disturbance_feedforward_rejection', 0)
@@ -136,7 +136,7 @@ class The_Motor_Controller:
 
         self.one_over_six = kwargs.get('one_over_six', 1 / 6)
         self.use_encoder_angle_no_matter_what = kwargs.get('CTRL.use_encoder_angle_no_matter_what', True)
-        self.flux_estimate_amplitude = kwargs.get('init_KE', 0.019)
+        self.flux_estimate_amplitude = kwargs.get('init_KE', 0.017)
         # mixed holtz and boldea to estimate K_E
         self.ell = kwargs.get('init_KE', 0.0)
         self.ell_prev = kwargs.get('init_KE', 0.0)
@@ -318,8 +318,8 @@ class Variables_FluxEstimator_Holtz03:
         self.psi_1_nonSat= np.zeros(2, dtype=np.float64)
         self.psi_2_nonSat= np.zeros(2, dtype=np.float64)
 
-        self.psi_1_min= np.zeros(2, dtype=np.float64)
-        self.psi_1_max= np.zeros(2, dtype=np.float64)
+        self.psi_1_min= np.full(2, -1 * init_KE, dtype=np.float64)
+        self.psi_1_max= np.full(2, init_KE, dtype=np.float64)
         self.psi_2_min= np.zeros(2, dtype=np.float64)
         self.psi_2_max= np.zeros(2, dtype=np.float64)
 
@@ -403,9 +403,9 @@ def DYNAMICS_FluxEstimator(x, CTRL, FE_param=1):
 
     fx[4] = CTRL.uab[0] - CTRL.R * FE_param * CTRL.iab[0] - (x[2] + uhf_alfa)
     fx[5] = CTRL.uab[1] - CTRL.R * FE_param * CTRL.iab[1] - (x[3] + uhf_beta)
-    
-    
+
     return fx
+
 def DYNAMICS_No_Saturation_FluxEstimator(x, CTRL, FE_param=1.0):
     fx = np.zeros(NS_GLOBAL)
     fx[0] = CTRL.uab[0] - CTRL.R * FE_param * CTRL.iab[0] - x[2] -x[4]
@@ -1259,7 +1259,7 @@ def init_nsoaf(CTRL):
 # nature speed oberver tuning
 def nso_one_parameter_tuning(CTRL):
     if CTRL.nsoaf_omega_ob < 170:
-        CTRL.nsoaf_set_omega_ob = 170
+        CTRL.nsoaf_set_omega_ob = 100
     one_over__npp_divided_by_Js__times__Lq_id_plus_KActive = 1 / (CTRL.npp * CTRL.Js_inv * CTRL.Lq_inv * (CTRL.Lq * CTRL.cmd_idq[0] + CTRL.KA) )
     # uq_inv = 1.0 / CTRL.cmd_udq[1]
     uq_inv = 1.0
@@ -1283,9 +1283,9 @@ def NSO_Dynamics(x, CTRL, param = 1.0):
         # CTRL.active_power_real =  abs(CTRL.nsoaf_uQ ) * CTRL.idq_c[1]
         # CTRL.active_power_est = abs(CTRL.nsoaf_uQ ) *xIq
         # CTRL.active_power_error =  abs(CTRL.nsoaf_uQ ) * CTRL.nsoaf_output_error
-        CTRL.active_power_real =  1 * CTRL.idq_c[1]
-        CTRL.active_power_est = 1 *xIq
-        CTRL.active_power_error =  1 * CTRL.nsoaf_output_error
+        CTRL.active_power_real =  + 1 * CTRL.idq_c[1]
+        CTRL.active_power_est = + 1 *xIq
+        CTRL.active_power_error =  + 1 * CTRL.nsoaf_output_error
     else:
         CTRL.active_power_real =  + CTRL.idq_c[1]
         CTRL.active_power_est =  + xIq
@@ -1317,7 +1317,9 @@ def NATRUE_SPEED_OBSERVER(CTRL, FE_param):
     CTRL.KA = CTRL.KE + (CTRL.Ld - CTRL.Lq ) * CTRL.idq_c[0]
     CTRL.nsoaf_xTem = CTRL.CLARKE_TRANS_TORQUE_GAIN * CTRL.npp * CTRL.KA * CTRL.nsoaf_xIq
     RK4_ObserverSolver_CJH_Style(NSO_Dynamics,CTRL.nsoaf_xSpeed,CTRL.CL_TS, CTRL, FE_param)
-    
+    CTRL.nsoaf_xIq      = CTRL.nsoaf_xSpeed[0]
+    CTRL.nsoaf_xOmg     = CTRL.nsoaf_xSpeed[1]
+    CTRL.nsoaf_xTL      = CTRL.nsoaf_xSpeed[2]
     """ Speed Observer Outputs """
     # CTRL.omega_r_elec = ACM.omega_r_elec 
     CTRL.omega_r_elec = CTRL.nsoaf_xOmg 
@@ -1580,7 +1582,7 @@ def SFOC_Dynamic(CTRL, reg_speed, reg_id, reg_iq):
     CTRL.cmd_udq[1] = reg_iq.Out
 
 ############################################# DSP SECTION
-def DSP(ACM, CTRL, reg_speed, reg_id, reg_iq, fe_htz, FE_param=1.0,ELL_param = 0.019):
+def DSP(ACM, CTRL, reg_speed, reg_id, reg_iq, fe_htz, FE_param=1.0,ELL_param = 0.017):
     CTRL.timebase += CTRL.CL_TS
 
     """ Current Measurement """
@@ -1851,7 +1853,7 @@ def vehicel_load_model(t, ACM):
     ACM.TLoad=FLoad*EVR          ##### 单侧转矩负载
     ACM.Js = EVJ = EVM*EVR*EVR*0.25  ##### 单轮等效转动惯量
 
-def ACMSimPyIncremental(t0, TIME, ACM=None, CTRL=None, reg_id=None, reg_iq=None, reg_speed=None, fe_htz=None, FE_param = 1.0, ELL_param = 0.019):
+def ACMSimPyIncremental(t0, TIME, ACM=None, CTRL=None, reg_id=None, reg_iq=None, reg_speed=None, fe_htz=None, FE_param = 1.0, ELL_param = 0.017):
 
     # RK4 simulation and controller execution relative freuqencies
     MACHINE_TS = CTRL.CL_TS / ACM.MACHINE_SIMULATIONs_PER_SAMPLING_PERIOD
