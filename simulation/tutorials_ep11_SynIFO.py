@@ -183,10 +183,12 @@ class The_Motor_Controller:
         self.psi_com = kwargs.get('psi_com', np.zeros(2, dtype=np.float64))
         # TOMEI 2005 observer and controller
         self.CL_TS_INV = 1 / self.CL_TS
-        self.TOMEI_gama_inv = kwargs.get('TOMEI_gama_inv', 120000)
+        # gama TL
+        self.TOMEI_gama_inv = kwargs.get('TOMEI_gama_inv', 20 / self.Js)
         self.e_psi_Qmu = kwargs.get('e_psi_Qmu', 0.0)
         self.e_psi_Dmu = kwargs.get('e_psi_Dmu', 0.0)
-        self.TOMEI_lamda_inv = kwargs.get('TOMEI_lambda_inv', 15000)
+        # lamda omg
+        self.TOMEI_lamda_inv = kwargs.get('TOMEI_lamda_inv', 1000)
         self.TOMEI_xRho = kwargs.get('TOMEI_xRho', 0.0)
         self.TOMEI_xTL = kwargs.get('TOMEI_xTL', 0.0)
         self.TOMEI_xOmg = kwargs.get('TOMEI_xOmg', 0.0)
@@ -207,7 +209,7 @@ class The_Motor_Controller:
         self.TOMEI_deriv_iQ_cmd = kwargs.get('TOMEI_deriv_iQ_cmd', 0.0)
         self.TOMEI_deriv_iD_cmd = kwargs.get('TOMEI_deriv_iD_cmd', 0.0)
         self.cmd_deriv_psi = kwargs.get('cmd_deriv_psi_Dmu', 0.0)
-        self.TOMEI_k_omega = kwargs.get('TOMEI_k_omega', 0.0)
+        self.TOMEI_k_omega = kwargs.get('TOMEI_k_omega', 10)
         self.cmd_dderiv_omega_r_elec = kwargs.get('cmd_dderiv_omega_r_elec', 0.0)
         self.cmd_deriv_omega_r_elec = kwargs.get('cmd_deriv_omega_r_elec', 0.0)
         self.TOMEI_e_iDs = kwargs.get('TOMEI_e_iDs', 0.0)
@@ -226,8 +228,6 @@ class The_Motor_Controller:
         self.npp_inv = 1 / self.npp
         self.TOMEI_kappa = kwargs.get('TOMEI_kappa', 1e4*24)
         self.cmd_psi_inv = 1 / self.cmd_psi
-        self.TOMEI_e_psi_Dmu = kwargs.get('TOMEI_e_psi_Dmu', 0.0)
-        self.TOMEI_e_psi_Qmu = kwargs.get('TOMEI_e_psi_Qmu', 0.0)
         self.cmd_iab = kwargs.get('cmd_iab', np.zeros(2, dtype=np.float64))
         self.gamma_res_transient = kwargs.get('gamma_res_transient', 0.0)
         self.gamma_res_transient_shape = kwargs.get('gamma_res_transient', 2000)
@@ -356,7 +356,6 @@ class SVgen_Object:
         self.line_to_line_voltage_AC = 0.0
         self.line_to_line_voltage_BC = 0.0
         self.line_to_line_voltage_AB = 0.0
-        
 
 class Variables_FluxEstimator_Holtz03:
     def __init__(self, IM_STAOTR_RESISTANCE, init_KE):
@@ -618,9 +617,9 @@ def SEPARATE_SPEED_OBSERVER(CTRL, Rs_param):
         CTRL.total_disrubance_feedforward = CTRL.xSpeed[2] + CTRL.ell2*CTRL.speed_observer_output_error
 # TOMEI 2005
 def rhs_func_TOMEI2005(increment_n, CTRL, xRho, xTL, xOmg):
-    xRho = CTRL.theta_d
-    CTRL.TOMEI_cosT = np.cos(xRho)
-    CTRL.TOMEI_sinT = np.sin(xRho)
+
+    CTRL.TOMEI_cosT = np.cos(CTRL.theta_d)
+    CTRL.TOMEI_sinT = np.sin(CTRL.theta_d)
 
     # CTRL.idq[0] = CTRL.iab[0] * CTRL.TOMEI_cosT + CTRL.iab[1] * CTRL.TOMEI_sinT
     # CTRL.idq[1] = CTRL.iab[0] *-CTRL.TOMEI_sinT + CTRL.iab[1] * CTRL.TOMEI_cosT
@@ -629,11 +628,12 @@ def rhs_func_TOMEI2005(increment_n, CTRL, xRho, xTL, xOmg):
     # xRho
     fx[0] = xOmg
     # xTL
-    fx[1] = - CTRL.TOMEI_gama_inv * CTRL.Js * CTRL.cmd_psi * CTRL.Lq_inv * CTRL.npp * (CTRL.TOMEI_sinT * (CTRL.iab[0] - CTRL.TOMEI_xia) - CTRL.TOMEI_cosT * (CTRL.iab[1] - CTRL.TOMEI_xib))
+    fx[1] = - CTRL.CLARKE_TRANS_TORQUE_GAIN * CTRL.TOMEI_gama_inv * CTRL.Js * CTRL.cmd_psi * CTRL.Lq_inv * CTRL.npp * (CTRL.TOMEI_sinT * (CTRL.iab[0] - CTRL.TOMEI_xia) - CTRL.TOMEI_cosT * (CTRL.iab[1] - CTRL.TOMEI_xib))
     # xOmg
-    xTem  = CTRL.CLARKE_TRANS_TORQUE_GAIN * CTRL.npp * (CTRL.TOMEI_psi_Dmu * CTRL.idq[1] - CTRL.TOMEI_psi_Qmu * CTRL.idq[0])
+    xTem  = CTRL.CLARKE_TRANS_TORQUE_GAIN * CTRL.npp * CTRL.cmd_psi * (- CTRL.iab[0] * CTRL.TOMEI_sinT + CTRL.iab[1] * CTRL.TOMEI_cosT)
     # fx[2] = CTRL.npp * CTRL.Js_inv * (xTem - xTL) + 2 * CTRL.TOMEI_lamda_inv * CTRL.cmd_psi * CTRL.e_psi_Qmu
-    fx[2] = CTRL.npp * CTRL.Js_inv * (xTem - xTL) + 2 * CTRL.TOMEI_lamda_inv * CTRL.cmd_psi * CTRL.e_psi_Qmu
+    fx[2] = CTRL.CLARKE_TRANS_TORQUE_GAIN * CTRL.cmd_psi * CTRL.Js_inv * CTRL.npp * (- CTRL.iab[0] * CTRL.TOMEI_sinT + CTRL.iab[1] * CTRL.TOMEI_cosT) - xTL * CTRL.Js_inv + \
+        2 * CTRL.TOMEI_lamda_inv * CTRL.npp * CTRL.Lq_inv * CTRL.cmd_psi * (CTRL.TOMEI_sinT * (CTRL.iab[0] - CTRL.TOMEI_xia) - CTRL.TOMEI_cosT * (CTRL.iab[1] - CTRL.TOMEI_xib))
     # xia
     fx[3] = CTRL.Lq_inv * (- CTRL.R * CTRL.TOMEI_xia + CTRL.cmd_psi * CTRL.omega_r_elec * CTRL.sinT + CTRL.uab[0]) + \
           CTRL.TOMEI_ke * (CTRL.iab[0] - CTRL.TOMEI_xia) + CTRL.omega_r_elec * (CTRL.iab[1] - CTRL.TOMEI_xib)
@@ -690,15 +690,11 @@ def TOMEI05_dedicated_rk4_solver(CTRL):
     CTRL.TOMEI_deriv_xTL    = (increment_1[1] + 2*(increment_2[1] + increment_3[1]) + increment_4[1])*0.166666666666667 * CTRL.CL_TS_INV
     CTRL.TOMEI_deriv_xOmg   = (increment_1[2] + 2*(increment_2[2] + increment_3[2]) + increment_4[2])*0.166666666666667 * CTRL.CL_TS_INV
 
-    if CTRL.TOMEI_xRho > np.pi:
-        CTRL.TOMEI_xRho -= 2*np.pi
-    elif CTRL.TOMEI_xRho < -np.pi:
-        CTRL.TOMEI_xRho += 2*np.pi
     
 def TOMEI_2005_observer(CTRL, Rs_param, fe_htz):
 
     CTRL.TOMEI_psi_Dmu = fe_htz.psi_2[0] *   CTRL.cosT + fe_htz.psi_2[1] * CTRL.sinT
-    CTRL.TOMEI_psi_Qmu = fe_htz.psi_2[0] * - CTRL.sinT + fe_htz.psi_2[1] * CTRL.cosT
+    CTRL.TOMEI_psi_Qmu = fe_htz.psi_2[0] * - CTRL.sinT + fe_htz.psi_2[1] * CTRL.cosT 
     CTRL.e_psi_Dmu = CTRL.TOMEI_psi_Dmu - CTRL.cmd_psi
     CTRL.e_psi_Qmu = CTRL.TOMEI_psi_Qmu - 0.0
     TOMEI05_dedicated_rk4_solver(CTRL)
@@ -942,14 +938,13 @@ def deriv_sat_kappa(x, CTRL):
     # CTRL.cmd_uab[0+2] = CTRL.cmd_uab[0]
     # CTRL.cmd_uab[1+2] = CTRL.cmd_uab[1]
     # for view in scope
-    CTRL.cmd_iab[0] = CTRL.cmd_idq[0] * CTRL.cosT - CTRL.cmd_idq[1] * CTRL.sinT
-    CTRL.cmd_iab[1] = CTRL.cmd_idq[0] * CTRL.sinT + CTRL.cmd_idq[1] * CTRL.cosT
-
-def controller_TOMEI2005(CTRL, fe_htz, ACM):
-    CTRL.theta_d = CTRL.TOMEI_xRho
+def controller_TOMEI2005(CTRL, ACM):
+    # CTRL.theta_d = CTRL.TOMEI_xRho
+    # CTRL.omega_r_elec = CTRL.TOMEI_xOmg
+    # CTRL.TLoad        = CTRL.TOMEI_xTL
     CTRL.theta_d = ACM.theta_d
     CTRL.omega_r_elec = ACM.omega_r_elec
-    CTRL.TLoad        = CTRL.TOMEI_xTL
+    CTRL.TLoad        = ACM.TLoad
     # αβ to DQ
     CTRL.cosT = np.cos(CTRL.theta_d)
     CTRL.sinT = np.sin(CTRL.theta_d)
@@ -962,6 +957,7 @@ def controller_TOMEI2005(CTRL, fe_htz, ACM):
     # REAL mu_temp     = CTRL.motor->npp_inv*CTRL.motor->Js * CLARKE_TRANS_TORQUE_GAIN_INVERSE*CTRL.motor->npp_inv;
     # REAL mu_temp_inv = CTRL.motor->npp*CTRL.motor->Js_inv * CLARKE_TRANS_TORQUE_GAIN*CTRL.motor->npp;
     # 第一项很有用，第二项无用。
+    CTRL.cmd_omega_r_elec = CTRL.cmd_rpm * CTRL.npp * 2 * np.pi / 60
     CTRL.TOMEI_deriv_iQ_cmd =   CTRL.npp_inv * CTRL.Js * CTRL.CLARKE_TRANS_TORQUE_GAIN_INVERSE * CTRL.npp_inv * (\
         1.0*(- CTRL.TOMEI_k_omega * deriv_sat_kappa(CTRL.omega_r_elec - CTRL.cmd_omega_r_elec, CTRL) * (CTRL.TOMEI_deriv_xOmg - CTRL.cmd_deriv_omega_r_elec) + CTRL.Js_inv * CTRL.npp * CTRL.TOMEI_deriv_xTL + CTRL.cmd_dderiv_omega_r_elec ) * CTRL.cmd_psi_inv\
       - 1.0*(- CTRL.TOMEI_k_omega *       sat_kappa(CTRL.omega_r_elec - CTRL.cmd_omega_r_elec, CTRL) + CTRL.Js_inv * CTRL.npp * CTRL.TLoad + CTRL.cmd_deriv_omega_r_elec) * (CTRL.cmd_deriv_psi * CTRL.cmd_psi_inv * CTRL.cmd_psi_inv)
@@ -979,8 +975,8 @@ def controller_TOMEI2005(CTRL, fe_htz, ACM):
     # voltage commands
     CTRL.cmd_udq[0] = CTRL.Lq * (- CTRL.TOMEI_ki * CTRL.TOMEI_e_iDs - CTRL.TOMEI_Gamma_D)
     CTRL.cmd_udq[1] = CTRL.Lq * (- CTRL.TOMEI_ki * CTRL.TOMEI_e_iQs - CTRL.TOMEI_Gamma_Q)
-    CTRL.cmd_uab[0] = CTRL.cmd_udq[0] * CTRL.cosT - CTRL.cmd_udq[1] * CTRL.sinT
-    CTRL.cmd_uab[1] = CTRL.cmd_udq[0] * CTRL.sinT + CTRL.cmd_udq[1] * CTRL.cosT
+    # CTRL.cmd_uab[0] = CTRL.cmd_udq[0] * CTRL.cosT - CTRL.cmd_udq[1] * CTRL.sinT
+    # CTRL.cmd_uab[1] = CTRL.cmd_udq[0] * CTRL.sinT + CTRL.cmd_udq[1] * CTRL.cosT
 
     # use the second 3 phase inverter
     # CTRL.cmd_uab[0+2] = CTRL.cmd_uab[0]
@@ -1035,7 +1031,7 @@ def DSP(ACM, CTRL, reg_speed, reg_id, reg_iq, fe_htz, Rs_param=1.0,ELL_param = 0
     if CTRL.index_controller == 0:
         FOC(CTRL, reg_speed, reg_id, reg_iq)
     elif CTRL.index_controller == 1:
-        controller_TOMEI2005(CTRL, fe_htz, ACM)
+        controller_TOMEI2005(CTRL, ACM)
     reverse_rotation(CTRL, ACM)
     # [$] Inverse Park transformation: get voltage commands in alpha-beta frame as SVPWM input
     CTRL.cmd_uab[0] = CTRL.cmd_udq[0] * CTRL.cosT + CTRL.cmd_udq[1] *- CTRL.sinT

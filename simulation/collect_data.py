@@ -21,5 +21,7 @@ def collect_data(watch_data, watch_index, CTRL, ACM, reg_id, reg_iq, reg_speed, 
 	watch_data[18][watch_index] = CTRL.TOMEI_xia
 	watch_data[19][watch_index] = CTRL.iab[1]
 	watch_data[20][watch_index] = CTRL.TOMEI_xib
+	watch_data[21][watch_index] = ACM.omega_r_mech * CTRL.npp
+	watch_data[22][watch_index] = CTRL.cmd_omega_r_elec
 	watch_index += 1
 	return watch_index

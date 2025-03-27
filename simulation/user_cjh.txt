@@ -12,3 +12,4 @@ $\psi_2$ [Wb]@fe_htz.psi_2[0]@fe_htz.psi_2[1]
 $\theta_e$ [rad/s] @fe_htz.theta_e 
 $i_{\alpha}$ [A]@CTRL.iab[0]@CTRL.TOMEI_xia 
 $i_{\beta}$ [A]@CTRL.iab[1]@CTRL.TOMEI_xib 
+$\omega_{cmd}$ @ACM.omega_r_mech * CTRL.npp@CTRL.cmd_omega_r_elec
